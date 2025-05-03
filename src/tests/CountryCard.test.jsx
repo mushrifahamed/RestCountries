@@ -1,3 +1,4 @@
+/* File: ./src/tests/CountryCard.test.jsx */
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import CountryCard from '../components/CountryCard';
@@ -22,7 +23,14 @@ test('renders country card with correct details', () => {
   );
 
   expect(screen.getByText('United States')).toBeInTheDocument();
-  expect(screen.getByText(/Population: 331,000,000/)).toBeInTheDocument();
-  expect(screen.getByText('Region: Americas')).toBeInTheDocument();
-  expect(screen.getByText('Capital: Washington, D.C.')).toBeInTheDocument();
+  
+  // Check for population label and value separately
+  expect(screen.getByText('Population:')).toBeInTheDocument();
+  expect(screen.getByText('331,000,000')).toBeInTheDocument();
+  
+  expect(screen.getByText('Region:')).toBeInTheDocument();
+  expect(screen.getByText('Americas')).toBeInTheDocument();
+  
+  expect(screen.getByText('Capital:')).toBeInTheDocument();
+  expect(screen.getByText('Washington, D.C.')).toBeInTheDocument();
 });

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../utils/firebase";
 import { useTheme } from "../utils/ThemeContext";
+import { motion, AnimatePresence } from "framer-motion";
+import toast from "react-hot-toast";
 
 const AuthModal = ({ isOpen, onClose }) => {
   const { theme } = useTheme();
@@ -18,60 +20,105 @@ const AuthModal = ({ isOpen, onClose }) => {
     try {
       if (isSignUp) {
         await createUserWithEmailAndPassword(auth, email, password);
+        toast.success("Account created successfully!");
       } else {
         await signInWithEmailAndPassword(auth, email, password);
+        toast.success("Signed in successfully!");
       }
       onClose();
     } catch (err) {
       setError(err.message);
+      toast.error(err.message);
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className={`p-6 rounded-lg shadow-lg w-full max-w-md ${theme === "light" ? "bg-white" : "bg-gray-800"}`}>
-        <h2 className={`text-2xl font-bold mb-4 ${theme === "light" ? "text-gray-800" : "text-white"}`}>
-          {isSignUp ? "Sign Up" : "Sign In"}
-        </h2>
-        <form onSubmit={handleAuth} className="flex flex-col gap-4">
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            className={`p-2 border rounded-md ${theme === "light" ? "bg-gray-100 text-gray-800" : "bg-gray-700 text-white"}`}
-            aria-label="Email"
-          />
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
-            className={`p-2 border rounded-md ${theme === "light" ? "bg-gray-100 text-gray-800" : "bg-gray-700 text-white"}`}
-            aria-label="Password"
-          />
-          {error && <p className="text-red-500">{error}</p>}
-          <button
-            type="submit"
-            className="p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
-          >
-            {isSignUp ? "Sign Up" : "Sign In"}
-          </button>
-        </form>
-        <button
-          onClick={() => setIsSignUp(!isSignUp)}
-          className={`mt-4 ${theme === "light" ? "text-blue-500" : "text-blue-300"}`}
+    <AnimatePresence>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+        onClick={onClose}
+      >
+        <motion.div
+          initial={{ scale: 0.9, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.9, opacity: 0 }}
+          className={`p-8 rounded-xl shadow-2xl w-full max-w-md ${
+            theme === "light" ? "bg-white" : "bg-gray-800"
+          }`}
+          onClick={(e) => e.stopPropagation()}
         >
-          {isSignUp ? "Already have an account? Sign In" : "Need an account? Sign Up"}
-        </button>
-        <button
-          onClick={onClose}
-          className={`mt-4 p-2 border rounded-md ${theme === "light" ? "bg-gray-200 text-gray-800 hover:bg-gray-300" : "bg-gray-700 text-white hover:bg-gray-600"}`}
-        >
-          Close
-        </button>
-      </div>
-    </div>
+          <h2 className={`text-2xl font-bold mb-6 ${theme === "light" ? "text-gray-800" : "text-white"}`}>
+            {isSignUp ? "Create Account" : "Welcome Back"}
+          </h2>
+          <form onSubmit={handleAuth} className="space-y-4">
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${theme === "light" ? "text-gray-700" : "text-gray-300"}`}>
+                Email
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Enter your email"
+                className={`w-full p-3 rounded-lg transition-all duration-300 ${
+                  theme === "light"
+                    ? "bg-gray-50 text-gray-800 border-gray-200 focus:border-blue-500"
+                    : "bg-gray-700 text-white border-gray-600 focus:border-blue-400"
+                } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
+                aria-label="Email"
+              />
+            </div>
+            <div>
+              <label className={`block text-sm font-medium mb-2 ${theme === "light" ? "text-gray-700" : "text-gray-300"}`}>
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Enter your password"
+                className={`w-full p-3 rounded-lg transition-all duration-300 ${
+                  theme === "light"
+                    ? "bg-gray-50 text-gray-800 border-gray-200 focus:border-blue-500"
+                    : "bg-gray-700 text-white border-gray-600 focus:border-blue-400"
+                } focus:outline-none focus:ring-2 focus:ring-blue-500/20`}
+                aria-label="Password"
+              />
+            </div>
+            {error && (
+              <motion.p
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-red-500 text-sm"
+              >
+                {error}
+              </motion.p>
+            )}
+            <motion.button
+              type="submit"
+              className="w-full p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300"
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              {isSignUp ? "Create Account" : "Sign In"}
+            </motion.button>
+          </form>
+          <div className="mt-6 text-center">
+            <button
+              onClick={() => setIsSignUp(!isSignUp)}
+              className={`text-sm ${
+                theme === "light" ? "text-blue-600 hover:text-blue-700" : "text-blue-400 hover:text-blue-300"
+              }`}
+            >
+              {isSignUp ? "Already have an account? Sign In" : "Need an account? Sign Up"}
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 };
 
