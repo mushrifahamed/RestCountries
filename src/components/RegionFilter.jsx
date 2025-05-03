@@ -1,9 +1,11 @@
 import { useState } from "react";
 import { filterCountriesByRegion, fetchAllCountries } from "../utils/api";
+import { useTheme } from "../utils/ThemeContext";
 
 const regions = ["Africa", "Americas", "Asia", "Europe", "Oceania"];
 
 const RegionFilter = ({ setFilteredCountries }) => {
+  const { theme } = useTheme();
   const [selectedRegion, setSelectedRegion] = useState("");
 
   const handleRegionChange = async (e) => {
@@ -26,7 +28,8 @@ const RegionFilter = ({ setFilteredCountries }) => {
     <select
       value={selectedRegion}
       onChange={handleRegionChange}
-      className="p-2 border rounded-md dark:bg-gray-800 dark:text-white"
+      className={`p-2 border rounded-md ${theme === "light" ? "bg-gray-200 text-gray-800" : "bg-gray-800 text-white"}`}
+      aria-label="Filter by region"
     >
       <option value="">Filter by Region</option>
       {regions.map((region) => (

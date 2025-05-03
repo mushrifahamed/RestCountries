@@ -1,0 +1,818 @@
+
+/* File: ./eslint.config.js */
+import js from '@eslint/js'
+import globals from 'globals'
+import reactHooks from 'eslint-plugin-react-hooks'
+import reactRefresh from 'eslint-plugin-react-refresh'
+
+export default [
+  { ignores: ['dist'] },
+  {
+    files: ['**/*.{js,jsx}'],
+    languageOptions: {
+      ecmaVersion: 2020,
+      globals: globals.browser,
+      parserOptions: {
+        ecmaVersion: 'latest',
+        ecmaFeatures: { jsx: true },
+        sourceType: 'module',
+      },
+    },
+    plugins: {
+      'react-hooks': reactHooks,
+      'react-refresh': reactRefresh,
+    },
+    rules: {
+      ...js.configs.recommended.rules,
+      ...reactHooks.configs.recommended.rules,
+      'no-unused-vars': ['error', { varsIgnorePattern: '^[A-Z_]' }],
+      'react-refresh/only-export-components': [
+        'warn',
+        { allowConstantExport: true },
+      ],
+    },
+  },
+]
+
+
+/* File: ./jest.config.js */
+module.exports = {
+    testEnvironment: "jsdom",
+    setupFilesAfterEnv: ["<rootDir>/src/setupTests.js"],
+  };
+
+/* File: ./tailwind.config.js */
+/** @type {import('tailwindcss').Config} */
+export default {
+    content: [
+      "./index.html",
+      "./src/**/*.{js,ts,jsx,tsx}",
+    ],
+    theme: {
+      extend: {},
+    },
+    plugins: [],
+    darkMode: 'class', // Explicitly enable dark mode with class strategy
+  }
+
+/* File: ./vite.config.js */
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
+import tailwindcss from '@tailwindcss/vite'
+
+// https://vite.dev/config/
+export default defineConfig({
+  plugins: [
+    react(),
+    tailwindcss()
+  ],
+})
+
+
+/* File: ./src\App.css */
+
+
+/* File: ./src\App.jsx */
+import { BrowserRouter as Router, Routes, Route, Link } from "react-router-dom";
+import Home from "./pages/Home";
+import CountryDetail from "./pages/CountryDetail";
+import Favorites from "./pages/Favorites";
+import ThemeToggle from "./components/ThemeToggle";
+import Auth from "./components/Auth";
+import { AuthProvider } from "./utils/AuthContext";
+
+function App() {
+  return (
+    <AuthProvider>
+      <Router>
+        <div className="min-h-screen bg-white dark:bg-gray-900">
+          <nav className="p-4 bg-gray-100 dark:bg-gray-800 flex justify-between items-center">
+            <div className="flex gap-4">
+              <Link to="/" className="p-2 border rounded-md bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600">
+                Home
+              </Link>
+              <Link to="/favorites" className="p-2 border rounded-md bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600">
+                Favorites
+              </Link>
+            </div>
+            <div className="flex gap-4">
+              <ThemeToggle />
+              <Auth />
+            </div>
+          </nav>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/country/:code" element={<CountryDetail />} />
+            <Route path="/favorites" element={<Favorites />} />
+          </Routes>
+        </div>
+      </Router>
+    </AuthProvider>
+  );
+}
+
+export default App;
+
+/* File: ./src\index.css */
+@import "tailwindcss";
+
+/* File: ./src\main.jsx */
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import './index.css'
+import App from './App.jsx'
+
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <App />
+  </StrictMode>,
+)
+
+
+/* File: ./src\components\Auth.jsx */
+import { useState } from "react";
+import { signOut } from "firebase/auth";
+import { auth } from "../utils/firebase";
+import { useAuth } from "../utils/AuthContext";
+import AuthModal from "./AuthModal";
+
+const Auth = () => {
+  const { user } = useAuth();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const handleSignOut = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error("Sign-out error:", error);
+    }
+  };
+
+  return (
+    <>
+      {user ? (
+        <div className="flex items-center gap-4">
+          <span className="dark:text-white">{user.email}</span>
+          <button
+            onClick={handleSignOut}
+            className="p-2 border rounded-md dark:bg-gray-800 dark:text-white"
+            aria-label="Sign out"
+          >
+            Sign Out
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => setIsModalOpen(true)}
+          className="p-2 border rounded-md dark:bg-gray-800 dark:text-white"
+          aria-label="Sign in"
+        >
+          Sign In
+        </button>
+      )}
+      <AuthModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+    </>
+  );
+};
+
+export default Auth;
+
+/* File: ./src\components\AuthModal.jsx */
+import { useState } from "react";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
+import { auth } from "../utils/firebase";
+
+const AuthModal = ({ isOpen, onClose }) => {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [error, setError] = useState("");
+
+  if (!isOpen) return null;
+
+  const handleAuth = async (e) => {
+    e.preventDefault();
+    setError("");
+    try {
+      if (isSignUp) {
+        await createUserWithEmailAndPassword(auth, email, password);
+      } else {
+        await signInWithEmailAndPassword(auth, email, password);
+      }
+      onClose();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
+        <h2 className="text-2xl font-bold mb-4 dark:text-white">{isSignUp ? "Sign Up" : "Sign In"}</h2>
+        <form onSubmit={handleAuth} className="flex flex-col gap-4">
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+            className="p-2 border rounded-md dark:bg-gray-700 dark:text-white"
+            aria-label="Email"
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password"
+            className="p-2 border rounded-md dark:bg-gray-700 dark:text-white"
+            aria-label="Password"
+          />
+          {error && <p className="text-red-500">{error}</p>}
+          <button
+            type="submit"
+            className="p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+          >
+            {isSignUp ? "Sign Up" : "Sign In"}
+          </button>
+        </form>
+        <button
+          onClick={() => setIsSignUp(!isSignUp)}
+          className="mt-4 text-blue-500 dark:text-blue-300"
+        >
+          {isSignUp ? "Already have an account? Sign In" : "Need an account? Sign Up"}
+        </button>
+        <button
+          onClick={onClose}
+          className="mt-4 p-2 border rounded-md dark:bg-gray-700 dark:text-white"
+        >
+          Close
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default AuthModal;
+
+/* File: ./src\components\CountryCard.jsx */
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+
+const CountryCard = ({ country }) => {
+  return (
+    <Link to={`/country/${country.cca3}`}>
+      <motion.div
+        className="border rounded-lg shadow-lg overflow-hidden dark:bg-gray-800"
+        whileHover={{ scale: 1.05 }}
+        transition={{ duration: 0.3 }}
+      >
+        <img
+          src={country.flags.png}
+          alt={`${country.name.common} flag`}
+          className="w-full h-40 object-cover"
+        />
+        <div className="p-4">
+          <h2 className="text-xl font-bold dark:text-white">{country.name.common}</h2>
+          <p className="dark:text-gray-300">Population: {country.population.toLocaleString()}</p>
+          <p className="dark:text-gray-300">Region: {country.region}</p>
+          <p className="dark:text-gray-300">Capital: {country.capital?.[0] || "N/A"}</p>
+        </div>
+      </motion.div>
+    </Link>
+  );
+};
+
+export default CountryCard;
+
+/* File: ./src\components\PopulationChart.jsx */
+import { Bar } from "react-chartjs-2";
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from "chart.js";
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
+
+const PopulationChart = ({ countries }) => {
+  const data = {
+    labels: countries.slice(0, 5).map((c) => c.name.common),
+    datasets: [
+      {
+        label: "Population",
+        data: countries.slice(0, 5).map((c) => c.population),
+        backgroundColor: "rgba(75, 192, 192, 0.6)",
+      },
+    ],
+  };
+
+  return (
+    <div className="my-8">
+      <h2 className="text-2xl font-bold mb-4 dark:text-white">Top 5 Countries by Population</h2>
+      <Bar data={data} />
+    </div>
+  );
+};
+
+export default PopulationChart;
+
+/* File: ./src\components\RegionFilter.jsx */
+import { useState } from "react";
+import { filterCountriesByRegion, fetchAllCountries } from "../utils/api";
+
+const regions = ["Africa", "Americas", "Asia", "Europe", "Oceania"];
+
+const RegionFilter = ({ setFilteredCountries }) => {
+  const [selectedRegion, setSelectedRegion] = useState("");
+
+  const handleRegionChange = async (e) => {
+    const region = e.target.value;
+    setSelectedRegion(region);
+    try {
+      if (region) {
+        const data = await filterCountriesByRegion(region);
+        setFilteredCountries(data);
+      } else {
+        const allCountries = await fetchAllCountries();
+        setFilteredCountries(allCountries);
+      }
+    } catch (error) {
+      setFilteredCountries([]);
+    }
+  };
+
+  return (
+    <select
+      value={selectedRegion}
+      onChange={handleRegionChange}
+      className="p-2 border rounded-md dark:bg-gray-800 dark:text-white"
+    >
+      <option value="">Filter by Region</option>
+      {regions.map((region) => (
+        <option key={region} value={region}>
+          {region}
+        </option>
+      ))}
+    </select>
+  );
+};
+
+export default RegionFilter;
+
+/* File: ./src\components\SearchBar.jsx */
+import { useState, useEffect } from "react";
+import { searchCountriesByName, fetchAllCountries } from "../utils/api";
+
+const SearchBar = ({ setFilteredCountries }) => {
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    const debounceSearch = setTimeout(async () => {
+      try {
+        if (query.trim()) {
+          const data = await searchCountriesByName(query);
+          setFilteredCountries(data);
+        } else {
+          const allCountries = await fetchAllCountries();
+          setFilteredCountries(allCountries);
+        }
+      } catch (error) {
+        setFilteredCountries([]);
+      }
+    }, 500);
+
+    return () => clearTimeout(debounceSearch);
+  }, [query, setFilteredCountries]);
+
+  const handleSearch = (e) => {
+    setQuery(e.target.value);
+  };
+
+  return (
+    <input
+      type="text"
+      value={query}
+      onChange={handleSearch}
+      placeholder="Search for a country..."
+      className="p-2 border rounded-md w-full md:w-1/2 dark:bg-gray-800 dark:text-white"
+    />
+  );
+};
+
+export default SearchBar;
+
+/* File: ./src\components\ThemeToggle.jsx */
+import { useState, useEffect } from "react";
+
+const ThemeToggle = () => {
+  const [isDark, setIsDark] = useState(() => {
+    const savedTheme = localStorage.getItem("theme");
+    return savedTheme ? savedTheme === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
+  });
+
+  useEffect(() => {
+    console.log("Dark mode:", isDark, document.documentElement.classList.contains("dark"));
+    if (isDark) {
+      document.documentElement.classList.add("dark");
+      localStorage.setItem("theme", "dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+      localStorage.setItem("theme", "light");
+    }
+  }, [isDark]);
+
+  return (
+    <button
+      onClick={() => setIsDark(!isDark)}
+      className="p-2 border rounded-md bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-700"
+      aria-label="Toggle theme"
+    >
+      {isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+    </button>
+  );
+};
+
+export default ThemeToggle;
+
+/* File: ./src\pages\CountryDetail.jsx */
+import { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
+import { fetchCountryByCode } from "../utils/api";
+import { motion } from "framer-motion";
+import { useAuth } from "../utils/AuthContext";
+
+const CountryDetail = () => {
+  const { code } = useParams();
+  const { user } = useAuth();
+  const [country, setCountry] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [favorites, setFavorites] = useState(JSON.parse(localStorage.getItem("favorites")) || []);
+
+  const toggleFavorite = () => {
+    if (!user) return;
+    let updatedFavorites;
+    if (favorites.includes(country.cca3)) {
+      updatedFavorites = favorites.filter((id) => id !== country.cca3);
+    } else {
+      updatedFavorites = [...favorites, country.cca3];
+    }
+    setFavorites(updatedFavorites);
+    localStorage.setItem("favorites", JSON.stringify(updatedFavorites));
+  };
+
+  useEffect(() => {
+    const loadCountry = async () => {
+      try {
+        const data = await fetchCountryByCode(code);
+        setCountry(data);
+        localStorage.setItem("lastCountry", JSON.stringify(data));
+        setLoading(false);
+      } catch (error) {
+        setLoading(false);
+      }
+    };
+    loadCountry();
+  }, [code]);
+
+  if (loading) return <p className="text-center dark:text-white">Loading...</p>;
+  if (!country) return <p className="text-center dark:text-white">Country not found.</p>;
+
+  return (
+    <motion.div
+      className="container mx-auto p-4 dark:bg-gray-900 dark:text-white min-h-screen"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+    >
+      <Link
+        to="/"
+        className="inline-block mb-8 p-2 border rounded-md dark:bg-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
+        aria-label="Back to home"
+      >
+        Back
+      </Link>
+      <div className="flex flex-col md:flex-row gap-8">
+        <img
+          src={country.flags.png}
+          alt={`${country.name.common} flag`}
+          className="w-full md:w-1/2 h-64 object-cover rounded-lg shadow-md"
+        />
+        <div className="flex flex-col gap-4">
+          <h1 className="text-3xl font-bold">{country.name.common}</h1>
+          <p><strong>Capital:</strong> {country.capital?.[0] || "N/A"}</p>
+          <p><strong>Population:</strong> {country.population.toLocaleString()}</p>
+          <p><strong>Region:</strong> {country.region}</p>
+          <p><strong>Languages:</strong> {Object.values(country.languages || {}).join(", ") || "N/A"}</p>
+          <p><strong>Currency:</strong> {Object.values(country.currencies || {})[0]?.name || "N/A"}</p>
+          <p><strong>Borders:</strong> {country.borders?.join(", ") || "None"}</p>
+          {user ? (
+            <button
+              onClick={toggleFavorite}
+              className={`p-2 rounded-md ${favorites.includes(country.cca3) ? "bg-red-500" : "bg-gray-500"} text-white hover:opacity-90`}
+              aria-label={favorites.includes(country.cca3) ? "Remove from favorites" : "Add to favorites"}
+            >
+              {favorites.includes(country.cca3) ? "Remove Favorite" : "Add Favorite"}
+            </button>
+          ) : (
+            <p className="text-red-500">Please sign in to add to favorites.</p>
+          )}
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+export default CountryDetail;
+
+/* File: ./src\pages\Favorites.jsx */
+import { useState, useEffect } from "react";
+import { fetchCountryByCode } from "../utils/api";
+import CountryCard from "../components/CountryCard";
+import { motion } from "framer-motion";
+import { Link } from "react-router-dom";
+
+const Favorites = () => {
+  const [favorites, setFavorites] = useState(JSON.parse(localStorage.getItem("favorites")) || []);
+  const [favoriteCountries, setFavoriteCountries] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadFavoriteCountries = async () => {
+      try {
+        const countryPromises = favorites.map((code) => fetchCountryByCode(code));
+        const countries = await Promise.all(countryPromises);
+        setFavoriteCountries(countries);
+        setLoading(false);
+      } catch (error) {
+        setLoading(false);
+      }
+    };
+    loadFavoriteCountries();
+  }, [favorites]);
+
+  return (
+    <div className="container mx-auto p-4 dark:bg-gray-900 dark:text-white min-h-screen">
+      <Link
+        to="/"
+        className="inline-block mb-8 p-2 border rounded-md dark:bg-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
+        aria-label="Back to home"
+      >
+        Back to Home
+      </Link>
+      <h1 className="text-3xl font-bold mb-8 text-center">Favorite Countries</h1>
+      {loading ? (
+        <p className="text-center">Loading...</p>
+      ) : favoriteCountries.length === 0 ? (
+        <p className="text-center">No favorite countries added.</p>
+      ) : (
+        <motion.div
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          {favoriteCountries.map((country) => (
+            <CountryCard key={country.cca3} country={country} />
+          ))}
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
+export default Favorites;
+
+/* File: ./src\pages\Home.jsx */
+import { useState, useEffect } from "react";
+import { fetchAllCountries } from "../utils/api";
+import CountryCard from "../components/CountryCard";
+import SearchBar from "../components/SearchBar";
+import RegionFilter from "../components/RegionFilter";
+import PopulationChart from "../components/PopulationChart";
+import { motion } from "framer-motion";
+
+const Home = () => {
+  const [countries, setCountries] = useState([]);
+  const [filteredCountries, setFilteredCountries] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [sortBy, setSortBy] = useState("name");
+  const [showChart, setShowChart] = useState(false);
+
+  const handleSort = (countries) => {
+    if (sortBy === "name") {
+      return [...countries].sort((a, b) => a.name.common.localeCompare(b.name.common));
+    } else if (sortBy === "population") {
+      return [...countries].sort((a, b) => b.population - a.population);
+    }
+    return countries;
+  };
+
+  useEffect(() => {
+    const loadCountries = async () => {
+      try {
+        const data = await fetchAllCountries();
+        setCountries(data);
+        setFilteredCountries(data);
+        setLoading(false);
+      } catch (error) {
+        setLoading(false);
+      }
+    };
+    loadCountries();
+  }, []);
+
+  return (
+    <div className="container mx-auto p-4 dark:bg-gray-900 dark:text-white min-h-screen">
+      <h1 className="text-3xl font-bold mb-6 text-center">REST Countries Explorer</h1>
+      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+        <SearchBar setFilteredCountries={setFilteredCountries} />
+        <div className="flex flex-col sm:flex-row gap-4">
+          <RegionFilter setFilteredCountries={setFilteredCountries} />
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value)}
+            className="p-2 border rounded-md dark:bg-gray-800 dark:text-white"
+            aria-label="Sort countries"
+          >
+            <option value="name">Sort by Name</option>
+            <option value="population">Sort by Population</option>
+          </select>
+        </div>
+      </div>
+      <button
+        onClick={() => setShowChart(!showChart)}
+        className="mb-6 p-2 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+        aria-label={showChart ? "Hide population chart" : "Show population chart"}
+      >
+        {showChart ? "Hide Population Chart" : "Show Population Chart"}
+      </button>
+      {showChart && <PopulationChart countries={filteredCountries} />}
+      {loading ? (
+        <p className="text-center">Loading...</p>
+      ) : filteredCountries.length === 0 ? (
+        <p className="text-center">No countries found.</p>
+      ) : (
+        <motion.div
+          className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          {handleSort(filteredCountries).map((country) => (
+            <CountryCard key={country.cca3} country={country} />
+          ))}
+        </motion.div>
+      )}
+    </div>
+  );
+};
+
+export default Home;
+
+/* File: ./src\tests\CountryCard.test.jsx */
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import CountryCard from "../components/CountryCard";
+
+const mockCountry = {
+  cca3: "USA",
+  name: { common: "United States" },
+  flags: { png: "flag.png" },
+  population: 331000000,
+  region: "Americas",
+  capital: ["Washington, D.C."],
+};
+
+test("renders country card with correct details", () => {
+  render(
+    <MemoryRouter>
+      <CountryCard country={mockCountry} />
+    </MemoryRouter>
+  );
+
+  expect(screen.getByText("United States")).toBeInTheDocument();
+  expect(screen.getByText(/Population: 331,000,000/)).toBeInTheDocument();
+  expect(screen.getByText("Region: Americas")).toBeInTheDocument();
+  expect(screen.getByText("Capital: Washington, D.C.")).toBeInTheDocument();
+});
+
+/* File: ./src\tests\Home.test.jsx */
+import { render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
+import Home from "../pages/Home";
+import { fetchAllCountries } from "../utils/api";
+
+jest.mock("../utils/api");
+
+test("renders countries after API call", async () => {
+  const mockCountries = [
+    {
+      cca3: "USA",
+      name: { common: "United States" },
+      flags: { png: "flag.png" },
+      population: 331000000,
+      region: "Americas",
+      capital: ["Washington, D.C."],
+    },
+  ];
+
+  fetchAllCountries.mockResolvedValue(mockCountries);
+
+  render(
+    <MemoryRouter>
+      <Home />
+    </MemoryRouter>
+  );
+
+  await waitFor(() => {
+    expect(screen.getByText("United States")).toBeInTheDocument();
+  });
+});
+
+/* File: ./src\tests\setupTests.js */
+import "@testing-library/jest-dom";
+
+/* File: ./src\utils\AuthContext.jsx */
+import { createContext, useContext, useEffect, useState } from "react";
+import { auth } from "./firebase";
+import { onAuthStateChanged } from "firebase/auth";
+
+const AuthContext = createContext();
+
+export const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  return (
+    <AuthContext.Provider value={{ user, loading }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+export const useAuth = () => useContext(AuthContext);
+
+/* File: ./src\utils\api.js */
+import axios from "axios";
+
+const API_BASE_URL = "https://restcountries.com/v3.1";
+
+export const fetchAllCountries = async () => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/all`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching all countries:", error);
+    throw error;
+  }
+};
+
+export const searchCountriesByName = async (name) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/name/${name}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error searching countries:", error);
+    throw error;
+  }
+};
+
+export const filterCountriesByRegion = async (region) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/region/${region}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error filtering by region:", error);
+    throw error;
+  }
+};
+
+export const fetchCountryByCode = async (code) => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/alpha/${code}`);
+    return response.data[0];
+  } catch (error) {
+    console.error("Error fetching country details:", error);
+    throw error;
+  }
+};
+
+/* File: ./src\utils\firebase.js */
+import { initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
+
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID,
+};
+
+const app = initializeApp(firebaseConfig);
+export const auth = getAuth(app);

@@ -1,23 +1,31 @@
-import { useState } from "react";
-import { searchCountriesByName } from "../utils/api";
+import { useState, useEffect } from "react";
+import { searchCountriesByName, fetchAllCountries } from "../utils/api";
+import { useTheme } from "../utils/ThemeContext";
 
 const SearchBar = ({ setFilteredCountries }) => {
+  const { theme } = useTheme();
   const [query, setQuery] = useState("");
 
-  const handleSearch = async (e) => {
-    const value = e.target.value;
-    setQuery(value);
-    try {
-      if (value.trim()) {
-        const data = await searchCountriesByName(value);
-        setFilteredCountries(data);
-      } else {
-        const allCountries = await fetchAllCountries();
-        setFilteredCountries(allCountries);
+  useEffect(() => {
+    const debounceSearch = setTimeout(async () => {
+      try {
+        if (query.trim()) {
+          const data = await searchCountriesByName(query);
+          setFilteredCountries(data);
+        } else {
+          const allCountries = await fetchAllCountries();
+          setFilteredCountries(allCountries);
+        }
+      } catch (error) {
+        setFilteredCountries([]);
       }
-    } catch (error) {
-      setFilteredCountries([]);
-    }
+    }, 500);
+
+    return () => clearTimeout(debounceSearch);
+  }, [query, setFilteredCountries]);
+
+  const handleSearch = (e) => {
+    setQuery(e.target.value);
   };
 
   return (
@@ -26,7 +34,8 @@ const SearchBar = ({ setFilteredCountries }) => {
       value={query}
       onChange={handleSearch}
       placeholder="Search for a country..."
-      className="p-2 border rounded-md w-full md:w-1/2 dark:bg-gray-800 dark:text-white"
+      className={`p-2 border rounded-md w-full md:w-1/2 ${theme === "light" ? "bg-gray-200 text-gray-800" : "bg-gray-800 text-white"}`}
+      aria-label="Search countries"
     />
   );
 };
