@@ -1,4 +1,3 @@
-/* File: ./src/tests/CountryCard.test.jsx */
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import CountryCard from '../components/CountryCard';

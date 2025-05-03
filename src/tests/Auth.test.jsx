@@ -1,4 +1,3 @@
-/* File: ./src/tests/Auth.test.jsx */
 import { render, screen } from '@testing-library/react';
 import Auth from '../components/Auth';
 import { ThemeProvider } from '../utils/ThemeContext';
