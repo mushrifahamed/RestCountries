@@ -35,39 +35,25 @@ export default [
 ]
 
 
-/* File: ./jest.config.js */
-module.exports = {
-    testEnvironment: "jsdom",
-    setupFilesAfterEnv: ["<rootDir>/src/setupTests.js"],
-  };
-
-/* File: ./tailwind.config.js */
-/** @type {import('tailwindcss').Config} */
-export default {
-    content: [
-      "./index.html",
-      "./src/**/*.{js,ts,jsx,tsx}",
-    ],
-    theme: {
-      extend: {},
-    },
-    plugins: [],
-    darkMode: 'class', // Explicitly enable dark mode with class strategy
-  }
-
 /* File: ./vite.config.js */
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-// https://vite.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss()
   ],
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['src/tests/setupTests.js', 'src/tests/matchMedia.js'],
+    globals: true,
+    coverage: {
+      reporter: ['text', 'lcov']
+    }
+  }
 })
-
 
 /* File: ./src\App.css */
 
@@ -80,38 +66,57 @@ import Favorites from "./pages/Favorites";
 import ThemeToggle from "./components/ThemeToggle";
 import Auth from "./components/Auth";
 import { AuthProvider } from "./utils/AuthContext";
+import { ThemeProvider, useTheme } from "./utils/ThemeContext";
 
 function App() {
+  const { theme } = useTheme(); // Access theme for root styling
+
   return (
-    <AuthProvider>
-      <Router>
-        <div className="min-h-screen bg-white dark:bg-gray-900">
-          <nav className="p-4 bg-gray-100 dark:bg-gray-800 flex justify-between items-center">
-            <div className="flex gap-4">
-              <Link to="/" className="p-2 border rounded-md bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600">
-                Home
-              </Link>
-              <Link to="/favorites" className="p-2 border rounded-md bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-600">
-                Favorites
-              </Link>
-            </div>
-            <div className="flex gap-4">
-              <ThemeToggle />
-              <Auth />
-            </div>
-          </nav>
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/country/:code" element={<CountryDetail />} />
-            <Route path="/favorites" element={<Favorites />} />
-          </Routes>
+    <div className={`min-h-screen ${theme === "light" ? "bg-white" : "bg-gray-900"}`}>
+      <nav className={`p-4 ${theme === "light" ? "bg-gray-100" : "bg-gray-800"} flex justify-between items-center`}>
+        <div className="flex gap-4">
+          <Link
+            to="/"
+            className={`p-2 border rounded-md ${
+              theme === "light" ? "bg-gray-200 text-gray-800 hover:bg-gray-300" : "bg-gray-700 text-white hover:bg-gray-600"
+            }`}
+          >
+            Home
+          </Link>
+          <Link
+            to="/favorites"
+            className={`p-2 border rounded-md ${
+              theme === "light" ? "bg-gray-200 text-gray-800 hover:bg-gray-300" : "bg-gray-700 text-white hover:bg-gray-600"
+            }`}
+          >
+            Favorites
+          </Link>
         </div>
-      </Router>
-    </AuthProvider>
+        <div className="flex gap-4">
+          <ThemeToggle />
+          <Auth />
+        </div>
+      </nav>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/country/:code" element={<CountryDetail />} />
+        <Route path="/favorites" element={<Favorites />} />
+      </Routes>
+    </div>
   );
 }
 
-export default App;
+export default function RootApp() {
+  return (
+    <ThemeProvider>
+      <AuthProvider>
+        <Router>
+          <App />
+        </Router>
+      </AuthProvider>
+    </ThemeProvider>
+  );
+}
 
 /* File: ./src\index.css */
 @import "tailwindcss";
@@ -135,9 +140,11 @@ import { signOut } from "firebase/auth";
 import { auth } from "../utils/firebase";
 import { useAuth } from "../utils/AuthContext";
 import AuthModal from "./AuthModal";
+import { useTheme } from "../utils/ThemeContext";
 
 const Auth = () => {
   const { user } = useAuth();
+  const { theme } = useTheme();
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleSignOut = async () => {
@@ -152,10 +159,12 @@ const Auth = () => {
     <>
       {user ? (
         <div className="flex items-center gap-4">
-          <span className="dark:text-white">{user.email}</span>
+          <span className={`${theme === "light" ? "text-gray-800" : "text-white"}`}>{user.email}</span>
           <button
             onClick={handleSignOut}
-            className="p-2 border rounded-md dark:bg-gray-800 dark:text-white"
+            className={`p-2 border rounded-md ${
+              theme === "light" ? "bg-gray-200 text-gray-800 hover:bg-gray-300" : "bg-gray-800 text-white hover:bg-gray-700"
+            }`}
             aria-label="Sign out"
           >
             Sign Out
@@ -164,7 +173,9 @@ const Auth = () => {
       ) : (
         <button
           onClick={() => setIsModalOpen(true)}
-          className="p-2 border rounded-md dark:bg-gray-800 dark:text-white"
+          className={`p-2 border rounded-md ${
+            theme === "light" ? "bg-gray-200 text-gray-800 hover:bg-gray-300" : "bg-gray-800 text-white hover:bg-gray-700"
+          }`}
           aria-label="Sign in"
         >
           Sign In
@@ -181,8 +192,10 @@ export default Auth;
 import { useState } from "react";
 import { signInWithEmailAndPassword, createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../utils/firebase";
+import { useTheme } from "../utils/ThemeContext";
 
 const AuthModal = ({ isOpen, onClose }) => {
+  const { theme } = useTheme();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
@@ -207,15 +220,17 @@ const AuthModal = ({ isOpen, onClose }) => {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-full max-w-md">
-        <h2 className="text-2xl font-bold mb-4 dark:text-white">{isSignUp ? "Sign Up" : "Sign In"}</h2>
+      <div className={`p-6 rounded-lg shadow-lg w-full max-w-md ${theme === "light" ? "bg-white" : "bg-gray-800"}`}>
+        <h2 className={`text-2xl font-bold mb-4 ${theme === "light" ? "text-gray-800" : "text-white"}`}>
+          {isSignUp ? "Sign Up" : "Sign In"}
+        </h2>
         <form onSubmit={handleAuth} className="flex flex-col gap-4">
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Email"
-            className="p-2 border rounded-md dark:bg-gray-700 dark:text-white"
+            className={`p-2 border rounded-md ${theme === "light" ? "bg-gray-100 text-gray-800" : "bg-gray-700 text-white"}`}
             aria-label="Email"
           />
           <input
@@ -223,7 +238,7 @@ const AuthModal = ({ isOpen, onClose }) => {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Password"
-            className="p-2 border rounded-md dark:bg-gray-700 dark:text-white"
+            className={`p-2 border rounded-md ${theme === "light" ? "bg-gray-100 text-gray-800" : "bg-gray-700 text-white"}`}
             aria-label="Password"
           />
           {error && <p className="text-red-500">{error}</p>}
@@ -236,13 +251,13 @@ const AuthModal = ({ isOpen, onClose }) => {
         </form>
         <button
           onClick={() => setIsSignUp(!isSignUp)}
-          className="mt-4 text-blue-500 dark:text-blue-300"
+          className={`mt-4 ${theme === "light" ? "text-blue-500" : "text-blue-300"}`}
         >
           {isSignUp ? "Already have an account? Sign In" : "Need an account? Sign Up"}
         </button>
         <button
           onClick={onClose}
-          className="mt-4 p-2 border rounded-md dark:bg-gray-700 dark:text-white"
+          className={`mt-4 p-2 border rounded-md ${theme === "light" ? "bg-gray-200 text-gray-800 hover:bg-gray-300" : "bg-gray-700 text-white hover:bg-gray-600"}`}
         >
           Close
         </button>
@@ -256,12 +271,15 @@ export default AuthModal;
 /* File: ./src\components\CountryCard.jsx */
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useTheme } from "../utils/ThemeContext";
 
 const CountryCard = ({ country }) => {
+  const { theme } = useTheme();
+
   return (
     <Link to={`/country/${country.cca3}`}>
       <motion.div
-        className="border rounded-lg shadow-lg overflow-hidden dark:bg-gray-800"
+        className={`border rounded-lg shadow-lg overflow-hidden ${theme === "light" ? "bg-white" : "bg-gray-800"}`}
         whileHover={{ scale: 1.05 }}
         transition={{ duration: 0.3 }}
       >
@@ -271,10 +289,10 @@ const CountryCard = ({ country }) => {
           className="w-full h-40 object-cover"
         />
         <div className="p-4">
-          <h2 className="text-xl font-bold dark:text-white">{country.name.common}</h2>
-          <p className="dark:text-gray-300">Population: {country.population.toLocaleString()}</p>
-          <p className="dark:text-gray-300">Region: {country.region}</p>
-          <p className="dark:text-gray-300">Capital: {country.capital?.[0] || "N/A"}</p>
+          <h2 className={`text-xl font-bold ${theme === "light" ? "text-gray-800" : "text-white"}`}>{country.name.common}</h2>
+          <p className={`${theme === "light" ? "text-gray-600" : "text-gray-300"}`}>Population: {country.population.toLocaleString()}</p>
+          <p className={`${theme === "light" ? "text-gray-600" : "text-gray-300"}`}>Region: {country.region}</p>
+          <p className={`${theme === "light" ? "text-gray-600" : "text-gray-300"}`}>Capital: {country.capital?.[0] || "N/A"}</p>
         </div>
       </motion.div>
     </Link>
@@ -286,10 +304,13 @@ export default CountryCard;
 /* File: ./src\components\PopulationChart.jsx */
 import { Bar } from "react-chartjs-2";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from "chart.js";
+import { useTheme } from "../utils/ThemeContext";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const PopulationChart = ({ countries }) => {
+  const { theme } = useTheme();
+
   const data = {
     labels: countries.slice(0, 5).map((c) => c.name.common),
     datasets: [
@@ -301,10 +322,39 @@ const PopulationChart = ({ countries }) => {
     ],
   };
 
+  const options = {
+    plugins: {
+      legend: {
+        labels: {
+          color: theme === "light" ? "rgb(31, 41, 55)" : "rgb(209, 213, 219)", // gray-800 : gray-300
+        },
+      },
+      title: {
+        color: theme === "light" ? "rgb(31, 41, 55)" : "rgb(209, 213, 219)", // gray-800 : gray-300
+      },
+      tooltip: {
+        titleColor: "rgb(255, 255, 255)", // white
+        bodyColor: "rgb(255, 255, 255)", // white
+      },
+    },
+    scales: {
+      x: {
+        ticks: {
+          color: theme === "light" ? "rgb(31, 41, 55)" : "rgb(209, 213, 219)", // gray-800 : gray-300
+        },
+      },
+      y: {
+        ticks: {
+          color: theme === "light" ? "rgb(31, 41, 55)" : "rgb(209, 213, 219)", // gray-800 : gray-300
+        },
+      },
+    },
+  };
+
   return (
-    <div className="my-8">
-      <h2 className="text-2xl font-bold mb-4 dark:text-white">Top 5 Countries by Population</h2>
-      <Bar data={data} />
+    <div className={`my-8 p-4 rounded-lg shadow-md ${theme === "light" ? "bg-white" : "bg-gray-800"}`}>
+      <h2 className={`text-2xl font-bold mb-4 ${theme === "light" ? "text-gray-800" : "text-white"}`}>Top 5 Countries by Population</h2>
+      <Bar data={data} options={options} />
     </div>
   );
 };
@@ -314,10 +364,12 @@ export default PopulationChart;
 /* File: ./src\components\RegionFilter.jsx */
 import { useState } from "react";
 import { filterCountriesByRegion, fetchAllCountries } from "../utils/api";
+import { useTheme } from "../utils/ThemeContext";
 
 const regions = ["Africa", "Americas", "Asia", "Europe", "Oceania"];
 
 const RegionFilter = ({ setFilteredCountries }) => {
+  const { theme } = useTheme();
   const [selectedRegion, setSelectedRegion] = useState("");
 
   const handleRegionChange = async (e) => {
@@ -340,7 +392,8 @@ const RegionFilter = ({ setFilteredCountries }) => {
     <select
       value={selectedRegion}
       onChange={handleRegionChange}
-      className="p-2 border rounded-md dark:bg-gray-800 dark:text-white"
+      className={`p-2 border rounded-md ${theme === "light" ? "bg-gray-200 text-gray-800" : "bg-gray-800 text-white"}`}
+      aria-label="Filter by region"
     >
       <option value="">Filter by Region</option>
       {regions.map((region) => (
@@ -357,8 +410,10 @@ export default RegionFilter;
 /* File: ./src\components\SearchBar.jsx */
 import { useState, useEffect } from "react";
 import { searchCountriesByName, fetchAllCountries } from "../utils/api";
+import { useTheme } from "../utils/ThemeContext";
 
 const SearchBar = ({ setFilteredCountries }) => {
+  const { theme } = useTheme();
   const [query, setQuery] = useState("");
 
   useEffect(() => {
@@ -389,7 +444,8 @@ const SearchBar = ({ setFilteredCountries }) => {
       value={query}
       onChange={handleSearch}
       placeholder="Search for a country..."
-      className="p-2 border rounded-md w-full md:w-1/2 dark:bg-gray-800 dark:text-white"
+      className={`p-2 border rounded-md w-full md:w-1/2 ${theme === "light" ? "bg-gray-200 text-gray-800" : "bg-gray-800 text-white"}`}
+      aria-label="Search countries"
     />
   );
 };
@@ -397,32 +453,20 @@ const SearchBar = ({ setFilteredCountries }) => {
 export default SearchBar;
 
 /* File: ./src\components\ThemeToggle.jsx */
-import { useState, useEffect } from "react";
+import { useTheme } from "../utils/ThemeContext";
 
 const ThemeToggle = () => {
-  const [isDark, setIsDark] = useState(() => {
-    const savedTheme = localStorage.getItem("theme");
-    return savedTheme ? savedTheme === "dark" : window.matchMedia("(prefers-color-scheme: dark)").matches;
-  });
-
-  useEffect(() => {
-    console.log("Dark mode:", isDark, document.documentElement.classList.contains("dark"));
-    if (isDark) {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-    }
-  }, [isDark]);
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <button
-      onClick={() => setIsDark(!isDark)}
-      className="p-2 border rounded-md bg-gray-200 dark:bg-gray-800 text-gray-800 dark:text-white hover:bg-gray-300 dark:hover:bg-gray-700"
+      onClick={toggleTheme}
+      className={`p-2 border rounded-md ${
+        theme === "light" ? "bg-gray-200 text-gray-800 hover:bg-gray-300" : "bg-gray-800 text-white hover:bg-gray-700"
+      }`}
       aria-label="Toggle theme"
     >
-      {isDark ? "Switch to Light Mode" : "Switch to Dark Mode"}
+      {theme === "light" ? "Switch to Dark Mode" : "Switch to Light Mode"}
     </button>
   );
 };
@@ -435,8 +479,10 @@ import { useParams, Link } from "react-router-dom";
 import { fetchCountryByCode } from "../utils/api";
 import { motion } from "framer-motion";
 import { useAuth } from "../utils/AuthContext";
+import { useTheme } from "../utils/ThemeContext";
 
 const CountryDetail = () => {
+  const { theme } = useTheme();
   const { code } = useParams();
   const { user } = useAuth();
   const [country, setCountry] = useState(null);
@@ -469,19 +515,21 @@ const CountryDetail = () => {
     loadCountry();
   }, [code]);
 
-  if (loading) return <p className="text-center dark:text-white">Loading...</p>;
-  if (!country) return <p className="text-center dark:text-white">Country not found.</p>;
+  if (loading) return <p className={`text-center ${theme === "light" ? "text-gray-800" : "text-white"}`}>Loading...</p>;
+  if (!country) return <p className={`text-center ${theme === "light" ? "text-gray-800" : "text-white"}`}>Country not found.</p>;
 
   return (
     <motion.div
-      className="container mx-auto p-4 dark:bg-gray-900 dark:text-white min-h-screen"
+      className={`container mx-auto p-4 min-h-screen ${theme === "light" ? "bg-white text-gray-800" : "bg-gray-900 text-white"}`}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5 }}
     >
       <Link
         to="/"
-        className="inline-block mb-8 p-2 border rounded-md dark:bg-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
+        className={`inline-block mb-8 p-2 border rounded-md ${
+          theme === "light" ? "bg-gray-200 text-gray-800 hover:bg-gray-300" : "bg-gray-800 text-white hover:bg-gray-700"
+        }`}
         aria-label="Back to home"
       >
         Back
@@ -525,8 +573,10 @@ import { fetchCountryByCode } from "../utils/api";
 import CountryCard from "../components/CountryCard";
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import { useTheme } from "../utils/ThemeContext";
 
 const Favorites = () => {
+  const { theme } = useTheme();
   const [favorites, setFavorites] = useState(JSON.parse(localStorage.getItem("favorites")) || []);
   const [favoriteCountries, setFavoriteCountries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -546,10 +596,12 @@ const Favorites = () => {
   }, [favorites]);
 
   return (
-    <div className="container mx-auto p-4 dark:bg-gray-900 dark:text-white min-h-screen">
+    <div className={`container mx-auto p-4 min-h-screen ${theme === "light" ? "bg-white text-gray-800" : "bg-gray-900 text-white"}`}>
       <Link
         to="/"
-        className="inline-block mb-8 p-2 border rounded-md dark:bg-gray-800 dark:text-white hover:bg-gray-200 dark:hover:bg-gray-700"
+        className={`inline-block mb-8 p-2 border rounded-md ${
+          theme === "light" ? "bg-gray-200 text-gray-800 hover:bg-gray-300" : "bg-gray-800 text-white hover:bg-gray-700"
+        }`}
         aria-label="Back to home"
       >
         Back to Home
@@ -585,8 +637,10 @@ import SearchBar from "../components/SearchBar";
 import RegionFilter from "../components/RegionFilter";
 import PopulationChart from "../components/PopulationChart";
 import { motion } from "framer-motion";
+import { useTheme } from "../utils/ThemeContext";
 
 const Home = () => {
+  const { theme } = useTheme();
   const [countries, setCountries] = useState([]);
   const [filteredCountries, setFilteredCountries] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -617,7 +671,7 @@ const Home = () => {
   }, []);
 
   return (
-    <div className="container mx-auto p-4 dark:bg-gray-900 dark:text-white min-h-screen">
+    <div className={`container mx-auto p-4 min-h-screen ${theme === "light" ? "bg-white text-gray-800" : "bg-gray-900 text-white"}`}>
       <h1 className="text-3xl font-bold mb-6 text-center">REST Countries Explorer</h1>
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
         <SearchBar setFilteredCountries={setFilteredCountries} />
@@ -626,7 +680,7 @@ const Home = () => {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value)}
-            className="p-2 border rounded-md dark:bg-gray-800 dark:text-white"
+            className={`p-2 border rounded-md ${theme === "light" ? "bg-gray-200 text-gray-800" : "bg-gray-800 text-white"}`}
             aria-label="Sort countries"
           >
             <option value="name">Sort by Name</option>
@@ -664,65 +718,147 @@ const Home = () => {
 
 export default Home;
 
-/* File: ./src\tests\CountryCard.test.jsx */
-import { render, screen } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import CountryCard from "../components/CountryCard";
+/* File: ./src\tests\Auth.test.jsx */
+import { render, screen } from '@testing-library/react';
+import Auth from '../components/Auth';
+import { ThemeProvider } from '../utils/ThemeContext';
+import { AuthProvider, useAuth } from '../utils/AuthContext';
 
-const mockCountry = {
-  cca3: "USA",
-  name: { common: "United States" },
-  flags: { png: "flag.png" },
-  population: 331000000,
-  region: "Americas",
-  capital: ["Washington, D.C."],
-};
+vi.mock('../utils/firebase', () => {
+  const mockAuth = {
+    signOut: vi.fn().mockResolvedValue(undefined),
+    onAuthStateChanged: vi.fn((auth, callback) => {
+      // Simulate Firebase calling the callback with the user state
+      const user = useAuth().user; // Use the mocked user state
+      callback(user);
+      return vi.fn(); // Return a mock unsubscribe function
+    }),
+  };
+  return {
+    auth: mockAuth,
+  };
+});
 
-test("renders country card with correct details", () => {
+vi.mock('../utils/AuthContext', async () => {
+  const actual = await vi.importActual('../utils/AuthContext');
+  return {
+    ...actual,
+    useAuth: vi.fn(),
+  };
+});
+
+test('renders sign-in button when user is not logged in', () => {
+  useAuth.mockReturnValue({ user: null });
+
   render(
-    <MemoryRouter>
-      <CountryCard country={mockCountry} />
-    </MemoryRouter>
+    <ThemeProvider>
+      <AuthProvider>
+        <Auth />
+      </AuthProvider>
+    </ThemeProvider>
   );
 
-  expect(screen.getByText("United States")).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Sign in/i })).toBeInTheDocument();
+});
+
+test('renders user email and sign-out button when user is logged in', () => {
+  useAuth.mockReturnValue({ user: { email: 'test@example.com' } });
+
+  render(
+    <ThemeProvider>
+      <AuthProvider>
+        <Auth />
+      </AuthProvider>
+    </ThemeProvider>
+  );
+
+  expect(screen.getByText('test@example.com')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /Sign out/i })).toBeInTheDocument();
+});
+
+/* File: ./src\tests\CountryCard.test.jsx */
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import CountryCard from '../components/CountryCard';
+import { ThemeProvider } from '../utils/ThemeContext';
+
+const mockCountry = {
+  cca3: 'USA',
+  name: { common: 'United States' },
+  flags: { png: 'flag.png' },
+  population: 331000000,
+  region: 'Americas',
+  capital: ['Washington, D.C.'],
+};
+
+test('renders country card with correct details', () => {
+  render(
+    <ThemeProvider>
+      <MemoryRouter>
+        <CountryCard country={mockCountry} />
+      </MemoryRouter>
+    </ThemeProvider>
+  );
+
+  expect(screen.getByText('United States')).toBeInTheDocument();
   expect(screen.getByText(/Population: 331,000,000/)).toBeInTheDocument();
-  expect(screen.getByText("Region: Americas")).toBeInTheDocument();
-  expect(screen.getByText("Capital: Washington, D.C.")).toBeInTheDocument();
+  expect(screen.getByText('Region: Americas')).toBeInTheDocument();
+  expect(screen.getByText('Capital: Washington, D.C.')).toBeInTheDocument();
 });
 
 /* File: ./src\tests\Home.test.jsx */
-import { render, screen, waitFor } from "@testing-library/react";
-import { MemoryRouter } from "react-router-dom";
-import Home from "../pages/Home";
-import { fetchAllCountries } from "../utils/api";
+import { render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
+import Home from '../pages/Home';
+import { fetchAllCountries } from '../utils/api';
+import { ThemeProvider } from '../utils/ThemeContext';
 
-jest.mock("../utils/api");
+// Mock the API module
+vi.mock('../utils/api', () => ({
+  fetchAllCountries: vi.fn(),
+}));
 
-test("renders countries after API call", async () => {
+test('renders countries after API call', async () => {
   const mockCountries = [
     {
-      cca3: "USA",
-      name: { common: "United States" },
-      flags: { png: "flag.png" },
+      cca3: 'USA',
+      name: { common: 'United States' },
+      flags: { png: 'flag.png' },
       population: 331000000,
-      region: "Americas",
-      capital: ["Washington, D.C."],
+      region: 'Americas',
+      capital: ['Washington, D.C.'],
     },
   ];
 
   fetchAllCountries.mockResolvedValue(mockCountries);
 
   render(
-    <MemoryRouter>
-      <Home />
-    </MemoryRouter>
+    <ThemeProvider>
+      <MemoryRouter>
+        <Home />
+      </MemoryRouter>
+    </ThemeProvider>
   );
 
   await waitFor(() => {
-    expect(screen.getByText("United States")).toBeInTheDocument();
+    expect(screen.getByText('United States')).toBeInTheDocument();
   });
 });
+
+/* File: ./src\tests\matchMedia.js */
+Object.defineProperty(window, 'matchMedia', {
+    writable: true,
+    value: vi.fn().mockImplementation(query => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(), // Deprecated
+      removeListener: vi.fn(), // Deprecated
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
 
 /* File: ./src\tests\setupTests.js */
 import "@testing-library/jest-dom";
@@ -754,6 +890,34 @@ export const AuthProvider = ({ children }) => {
 };
 
 export const useAuth = () => useContext(AuthContext);
+
+/* File: ./src\utils\ThemeContext.jsx */
+import { createContext, useContext, useState, useEffect } from "react";
+
+const ThemeContext = createContext();
+
+export const ThemeProvider = ({ children }) => {
+  const [theme, setTheme] = useState(() => {
+    const savedTheme = localStorage.getItem("theme");
+    return savedTheme ? savedTheme : window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  });
+
+  useEffect(() => {
+    localStorage.setItem("theme", theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(theme === "light" ? "dark" : "light");
+  };
+
+  return (
+    <ThemeContext.Provider value={{ theme, toggleTheme }}>
+      {children}
+    </ThemeContext.Provider>
+  );
+};
+
+export const useTheme = () => useContext(ThemeContext);
 
 /* File: ./src\utils\api.js */
 import axios from "axios";
